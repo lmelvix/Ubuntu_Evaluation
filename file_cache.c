@@ -7,7 +7,7 @@
 
 
 void cache_access(int fd, int size) {
-
+	
         int sample;
         char *buf[1024];
         ticks start, end;
@@ -39,22 +39,69 @@ void main() {
 	ticks start, end;
 	long double overhead;
 	long double cache_read_overhead;
+	
+	printf("\n FILE CACHING: \n"); 
+	fd = open("filem_1",O_RDONLY); 
+	while(read(fd,buf,1024) !=0);
+	cache_access(fd,1);
 
-	printf("\n FILE CACHING: \n");
-	fd = open("filem_1",O_RDONLY); cache_access(fd,1);
-	fd = open("filem_2",O_RDONLY); cache_access(fd,10);
-	fd = open("filem_3",O_RDONLY); cache_access(fd,20);
-	fd = open("filem_4",O_RDONLY); cache_access(fd,40);
-	fd = open("filem_5",O_RDONLY); cache_access(fd,80);
-	fd = open("filem_6",O_RDONLY); cache_access(fd,160);
-	fd = open("filem_7",O_RDONLY); cache_access(fd,320);
-	fd = open("filem_8",O_RDONLY); cache_access(fd,640);
-	fd = open("filem_9",O_RDONLY); cache_access(fd,1000);
-	fd = open("filem_10",O_RDONLY); cache_access(fd,2000);
-	fd = open("file_3",O_RDONLY); cache_access(fd,3000);
-	fd = open("file_4",O_RDONLY); cache_access(fd,4000);
-	fd = open("file_5",O_RDONLY); cache_access(fd,5000);
-	fd = open("file_6",O_RDONLY); cache_access(fd,6000);
-	fd = open("file_7",O_RDONLY); cache_access(fd,7000);
-	fd = open("file_8",O_RDONLY); cache_access(fd,8000);
+	fd = open("filem_2",O_RDONLY); 
+        while(read(fd,buf,1024) !=0);
+	cache_access(fd,10);
+
+	fd = open("filem_3",O_RDONLY); 
+        while(read(fd,buf,1024) !=0);
+	cache_access(fd,20);
+
+	fd = open("filem_4",O_RDONLY); 
+        while(read(fd,buf,1024) !=0);
+	cache_access(fd,40);
+	
+	fd = open("filem_5",O_RDONLY); 
+        while(read(fd,buf,1024) !=0);
+	cache_access(fd,80);	
+	
+	fd = open("filem_6",O_RDONLY); 
+        while(read(fd,buf,1024) !=0);
+	cache_access(fd,160);
+	
+	fd = open("filem_7",O_RDONLY);
+        while(read(fd,buf,1024) !=0);
+	cache_access(fd,320);	
+	
+	fd = open("filem_8",O_RDONLY); 
+        while(read(fd,buf,1024) !=0);
+	cache_access(fd,640);	
+	
+	fd = open("filem_9",O_RDONLY); 
+        while(read(fd,buf,1024) !=0);
+	cache_access(fd,1000);
+
+	fd = open("filem_10",O_RDONLY); 
+        while(read(fd,buf,1024) !=0);
+	cache_access(fd,2000);	
+
+	fd = open("file_3",O_RDONLY); 
+        while(read(fd,buf,1024) !=0);
+	cache_access(fd,3000);
+
+	fd = open("file_4",O_RDONLY); 
+        while(read(fd,buf,1024) !=0);
+	cache_access(fd,4000);
+	
+	fd = open("file_5",O_RDONLY); 
+        while(read(fd,buf,1024) !=0);
+	cache_access(fd,5000);
+	
+	fd = open("file_6",O_RDONLY); 
+        while(read(fd,buf,1024) !=0);
+	cache_access(fd,6000);
+
+	fd = open("file_7",O_RDONLY); 
+        while(read(fd,buf,1024) !=0);
+	cache_access(fd,7000);
+	
+	fd = open("file_8",O_RDONLY); 
+        while(read(fd,buf,1024) !=0);
+	cache_access(fd,8000);
 }

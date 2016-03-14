@@ -3,6 +3,7 @@
 #include<stdlib.h>
 #include<unistd.h>
 #include<math.h>
+#include<sched.h>
 #include<fcntl.h>
 #include<string.h>
 #include<sys/types.h>
@@ -12,39 +13,40 @@
 
 void seq_access(int fd, int size, char size_type) {
 
-    int sample,sample_count = 10;
+        int sample,sample_count = 10;
 	long double count = 1;
-    char buf[4096] __attribute__((aligned(4096)));
+        char buf[4096] __attribute__((aligned(4096)));
 	ssize_t data;
-    ticks start, end;
-    long double overhead;
-    long double seq_read_overhead;
+        ticks start, end;
+        long double overhead;
+        long double seq_read_overhead;
 	long double stat[10],std;
 	long int blocks, itr;
 
-    for (sample=0;sample<sample_count;sample++) {
-        start = getticks();
-        while(1){
+        for (sample=0;sample<sample_count;sample++) {
+		start = getticks();
+                while(1){
 			data = read(fd,buf,4096);
 			if(data == 0) {
-                break;
+				break;
 			}
 			count++;
 		}
 		end = getticks();
 		stat[sample] = (long double)(end - start);
-    }
-    count = count/sample_count;
-    overhead = (long double)(mean(stat,sample_count));
+        }
+	count = count/sample_count;
+        overhead = (long double)(mean(stat,sample_count));
 	std = (long double)(standard_deviation(stat,sample_count)/CPU_FREQUENCY);
-    seq_read_overhead = (long double)(overhead/CPU_FREQUENCY);
-    printf("File Size : %d %cb\t Access Time : %LF us \t Access time per block : %LF \t Standard Deviation : %LF \n",
-            size, size_type, seq_read_overhead, (long double)(seq_read_overhead/count),(std/count));
+        seq_read_overhead = (long double)(overhead/CPU_FREQUENCY);
+        printf("File Size : %d %cb\t Access Time : %LF us \t Access time per block : %LF \t Standard Deviation : %LF \n",
+		size, size_type, seq_read_overhead, (long double)(seq_read_overhead/count),(std/count));
+
 }
 
 
 void rand_access(int fd, long size, int print_size, char size_type) {
-
+	
 	int subsample,sample, count=1;
 	off_t block_location=0;
 	ssize_t data;
@@ -68,7 +70,7 @@ void rand_access(int fd, long size, int print_size, char size_type) {
 		rand_read_overhead += (long double)(overhead/(tot_blocks*CPU_FREQUENCY));
 	}
 	printf("File Size : %d %cb\t Total Blocks : %d\t Random Access Time: %LF\t Access Time per block: %LF \n",
-            print_size, size_type, (int)tot_blocks,(rand_read_overhead/10)*tot_blocks,(rand_read_overhead/10));
+                print_size, size_type, (int)tot_blocks,(rand_read_overhead/10)*tot_blocks,(rand_read_overhead/10));
 
 }
 
@@ -85,7 +87,7 @@ void cont_access(int num_process) {
 	void *buf, *buf_parent;
 	ticks start, end;
 	long double cont_overhead, cont_block;
-	long int parent_itr;
+	long int parent_itr;	
 
 	for(process=0, file_num=0;process<num_process;process++,file_num++) {
 		pid = fork();
@@ -107,7 +109,7 @@ void cont_access(int num_process) {
 	}
 	sleep(1);
 	wait(&key);
-
+	
 	fd_parent = open("filem_4",O_SYNC | O_RDONLY | O_DIRECT);
 	posix_fadvise(fd_parent,0,0,POSIX_FADV_RANDOM);
 	start = getticks();
@@ -125,25 +127,30 @@ void cont_access(int num_process) {
 	cont_block = (long double)(cont_overhead/10240);
 	close(fd_parent);
 	printf("Number of Processes : %d \t File Size : 40MB \t Access Time : %LF us \t Block Access Time : %LF us \n",
-		num_process, cont_overhead, cont_block);
-
+		num_process, cont_overhead, cont_block);  
+	
 }
 
 
 void main() {
 
-    int fd;
+        int fd;
 	int sample;
-    char buf[4096] __attribute__((aligned(4096)));
+        char buf[4096] __attribute__((aligned(4096)));
 	long int warm_itr=10240;
-    ssize_t data;
+        ssize_t data;
 	long int kB = 1024;
 	long int Mb = kB*1000;
 	long int Gb = Mb*1000;
+	int pid;
+	struct sched_param process_sched;	
 
+	pid = getpid();
+	process_sched.sched_priority = 90;
+	sched_setscheduler(pid, SCHED_RR, &process_sched);
 	// WARM UP //
 	for (sample = 0; sample <= NUM_SAMPLES; sample++) {
-		fd = open("filem_4",O_RDONLY | O_SYNC);
+		fd = open("filem_4",O_RDONLY | O_SYNC); 
                 lseek(fd,0,SEEK_SET);
                 while(warm_itr){
                         data = read(fd,buf,4096);
@@ -155,7 +162,7 @@ void main() {
 	}
 
 	printf("\n FILE ACCESS CONTENTION: \n");
-	cont_access(0);
+	cont_access(0); 
 	cont_access(1);
 	cont_access(2);
 	cont_access(3);
@@ -167,8 +174,9 @@ void main() {
 	cont_access(9);
 	cont_access(10);
 
-    printf("\nRANDOM FILE ACCESS: \n");
-    fd = open("filek_1",O_RDONLY | O_SYNC | O_DIRECT); rand_access(fd,(1*kB),1,'k'); close(fd);
+ 
+        printf("\nRANDOM FILE ACCESS: \n");
+	fd = open("filek_1",O_RDONLY | O_SYNC | O_DIRECT); rand_access(fd,(1*kB),1,'k'); close(fd);
 	fd = open("filek_2",O_RDONLY | O_SYNC | O_DIRECT); rand_access(fd,(2*kB),2,'k'); close(fd);
 	fd = open("filek_4",O_RDONLY | O_SYNC | O_DIRECT); rand_access(fd,4*kB,4,'k'); close(fd);
 	fd = open("filek_8",O_RDONLY | O_SYNC | O_DIRECT); rand_access(fd,8*kB,8,'k'); close(fd);
@@ -179,22 +187,23 @@ void main() {
 	fd = open("filek_256",O_RDONLY | O_SYNC | O_DIRECT); rand_access(fd,256*kB,256,'k'); close(fd);
 	fd = open("filek_512",O_RDONLY | O_SYNC | O_DIRECT); rand_access(fd,512*kB,512,'k'); close(fd);
 	fd = open("filem_1",O_RDONLY | O_SYNC | O_DIRECT); rand_access(fd,1*Mb,1,'M'); close(fd);
-    fd = open("filem_2",O_RDONLY | O_SYNC | O_DIRECT); rand_access(fd,10*Mb,10,'M'); close(fd);
-    fd = open("filem_3",O_RDONLY | O_SYNC | O_DIRECT); rand_access(fd,20*Mb,20,'M'); close(fd);
-    fd = open("filem_4",O_RDONLY | O_SYNC | O_DIRECT); rand_access(fd,40*Mb,40,'M'); close(fd);
-    fd = open("filem_5",O_RDONLY | O_SYNC | O_DIRECT); rand_access(fd,80*Mb,80,'M'); close(fd);
-    fd = open("filem_6",O_RDONLY | O_SYNC | O_DIRECT); rand_access(fd,160*Mb,160,'M'); close(fd);
-    fd = open("filem_7",O_RDONLY | O_SYNC | O_DIRECT); rand_access(fd,320*Mb,320,'M'); close(fd);
-    fd = open("filem_8",O_RDONLY | O_SYNC | O_DIRECT); rand_access(fd,640*Mb,640,'M'); close(fd);
-    fd = open("filem_9",O_RDONLY | O_SYNC | O_DIRECT); rand_access(fd,1*Gb,1,'G'); close(fd);
-    fd = open("filem_10",O_RDONLY | O_SYNC | O_DIRECT); rand_access(fd,2*Gb,2,'G'); close(fd);
-    fd = open("file_3",O_RDONLY | O_SYNC | O_DIRECT); rand_access(fd,3*Gb,3,'G'); close(fd);
-    fd = open("file_4",O_RDONLY | O_SYNC | O_DIRECT); rand_access(fd,4*Gb,4,'G'); close(fd);
-    fd = open("file_5",O_RDONLY | O_SYNC | O_DIRECT); rand_access(fd,5*Gb,5,'G'); close(fd);
-    fd = open("file_6",O_RDONLY | O_SYNC | O_DIRECT); rand_access(fd,6*Gb,6,'G'); close(fd);
-    fd = open("file_7",O_RDONLY | O_SYNC | O_DIRECT); rand_access(fd,7*Gb,7,'G'); close(fd);
-    fd = open("file_8",O_RDONLY | O_SYNC | O_DIRECT); rand_access(fd,8*Gb,8,'G'); close(fd);
+        fd = open("filem_2",O_RDONLY | O_SYNC | O_DIRECT); rand_access(fd,10*Mb,10,'M'); close(fd);
+        fd = open("filem_3",O_RDONLY | O_SYNC | O_DIRECT); rand_access(fd,20*Mb,20,'M'); close(fd);
+        fd = open("filem_4",O_RDONLY | O_SYNC | O_DIRECT); rand_access(fd,40*Mb,40,'M'); close(fd);
+        fd = open("filem_5",O_RDONLY | O_SYNC | O_DIRECT); rand_access(fd,80*Mb,80,'M'); close(fd);
+        fd = open("filem_6",O_RDONLY | O_SYNC | O_DIRECT); rand_access(fd,160*Mb,160,'M'); close(fd);
+        fd = open("filem_7",O_RDONLY | O_SYNC | O_DIRECT); rand_access(fd,320*Mb,320,'M'); close(fd);
+        fd = open("filem_8",O_RDONLY | O_SYNC | O_DIRECT); rand_access(fd,640*Mb,640,'M'); close(fd);
+        fd = open("filem_9",O_RDONLY | O_SYNC | O_DIRECT); rand_access(fd,1*Gb,1,'G'); close(fd);
+        fd = open("filem_10",O_RDONLY | O_SYNC | O_DIRECT); rand_access(fd,2*Gb,2,'G'); close(fd);
+        fd = open("file_3",O_RDONLY | O_SYNC | O_DIRECT); rand_access(fd,3*Gb,3,'G'); close(fd);
+        fd = open("file_4",O_RDONLY | O_SYNC | O_DIRECT); rand_access(fd,4*Gb,4,'G'); close(fd);
+        fd = open("file_5",O_RDONLY | O_SYNC | O_DIRECT); rand_access(fd,5*Gb,5,'G'); close(fd);
+        fd = open("file_6",O_RDONLY | O_SYNC | O_DIRECT); rand_access(fd,6*Gb,6,'G'); close(fd);
+        fd = open("file_7",O_RDONLY | O_SYNC | O_DIRECT); rand_access(fd,7*Gb,7,'G'); close(fd);
+        fd = open("file_8",O_RDONLY | O_SYNC | O_DIRECT); rand_access(fd,8*Gb,8,'G'); close(fd);
 
+	
 	printf("\n SEQUENTIAL FILE ACCESS :\n");
 	fd = open("filek_1",O_RDONLY | O_SYNC | O_DIRECT); seq_access(fd,1,'k'); close(fd);
 	fd = open("filek_2",O_RDONLY | O_SYNC | O_DIRECT); seq_access(fd,2,'k'); close(fd);
@@ -207,20 +216,20 @@ void main() {
 	fd = open("filek_256",O_RDONLY | O_SYNC | O_DIRECT); seq_access(fd,256,'k'); close(fd);
 	fd = open("filek_512",O_RDONLY | O_SYNC | O_DIRECT); seq_access(fd,512,'k'); close(fd);
 	fd = open("filem_1",O_RDONLY | O_SYNC | O_DIRECT); seq_access(fd,1,'M'); close(fd);
-    fd = open("filem_2",O_RDONLY | O_SYNC | O_DIRECT); seq_access(fd,10,'M'); close(fd);
-    fd = open("filem_3",O_RDONLY | O_SYNC | O_DIRECT); seq_access(fd,20,'M'); close(fd);
-    fd = open("filem_4",O_RDONLY | O_SYNC | O_DIRECT); seq_access(fd,40,'M'); close(fd);
-    fd = open("filem_5",O_RDONLY | O_SYNC | O_DIRECT); seq_access(fd,80,'M'); close(fd);
-    fd = open("filem_6",O_RDONLY | O_SYNC | O_DIRECT); seq_access(fd,160,'M'); close(fd);
-    fd = open("filem_7",O_RDONLY | O_SYNC | O_DIRECT); seq_access(fd,320,'M'); close(fd);
-    fd = open("filem_8",O_RDONLY | O_SYNC | O_DIRECT); seq_access(fd,640, 'M'); close(fd);
-    fd = open("filem_9",O_RDONLY | O_SYNC | O_DIRECT); seq_access(fd,1,'G'); close(fd);
-    fd = open("filem_10",O_RDONLY | O_SYNC | O_DIRECT); seq_access(fd,2,'G'); close(fd);
-    fd = open("file_3",O_RDONLY | O_SYNC | O_DIRECT); seq_access(fd,3,'G'); close(fd);
-    fd = open("file_4",O_RDONLY | O_SYNC | O_DIRECT ); seq_access(fd,4,'G'); close(fd);
-    fd = open("file_5",O_RDONLY | O_SYNC | O_DIRECT ); seq_access(fd,5,'G'); close(fd);
-    fd = open("file_6",O_RDONLY | O_SYNC | O_DIRECT ); seq_access(fd,6,'G'); close(fd);
-    fd = open("file_7",O_RDONLY | O_SYNC | O_DIRECT ); seq_access(fd,7,'G'); close(fd);
-    fd = open("file_8",O_RDONLY | O_SYNC | O_DIRECT ); seq_access(fd,8,'G'); close(fd);
+        fd = open("filem_2",O_RDONLY | O_SYNC | O_DIRECT); seq_access(fd,10,'M'); close(fd);
+        fd = open("filem_3",O_RDONLY | O_SYNC | O_DIRECT); seq_access(fd,20,'M'); close(fd);
+        fd = open("filem_4",O_RDONLY | O_SYNC | O_DIRECT); seq_access(fd,40,'M'); close(fd);
+        fd = open("filem_5",O_RDONLY | O_SYNC | O_DIRECT); seq_access(fd,80,'M'); close(fd);
+        fd = open("filem_6",O_RDONLY | O_SYNC | O_DIRECT); seq_access(fd,160,'M'); close(fd);
+        fd = open("filem_7",O_RDONLY | O_SYNC | O_DIRECT); seq_access(fd,320,'M'); close(fd);
+        fd = open("filem_8",O_RDONLY | O_SYNC | O_DIRECT); seq_access(fd,640, 'M'); close(fd);
+        fd = open("filem_9",O_RDONLY | O_SYNC | O_DIRECT); seq_access(fd,1,'G'); close(fd);
+        fd = open("filem_10",O_RDONLY | O_SYNC | O_DIRECT); seq_access(fd,2,'G'); close(fd);
+        fd = open("file_3",O_RDONLY | O_SYNC | O_DIRECT); seq_access(fd,3,'G'); close(fd);
+        fd = open("file_4",O_RDONLY | O_SYNC | O_DIRECT ); seq_access(fd,4,'G'); close(fd);
+        fd = open("file_5",O_RDONLY | O_SYNC | O_DIRECT ); seq_access(fd,5,'G'); close(fd);
+        fd = open("file_6",O_RDONLY | O_SYNC | O_DIRECT ); seq_access(fd,6,'G'); close(fd);
+        fd = open("file_7",O_RDONLY | O_SYNC | O_DIRECT ); seq_access(fd,7,'G'); close(fd);
+        fd = open("file_8",O_RDONLY | O_SYNC | O_DIRECT ); seq_access(fd,8,'G'); close(fd);
 }
 
