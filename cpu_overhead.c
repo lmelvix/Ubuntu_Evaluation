@@ -491,6 +491,7 @@ int main() {
 	for(sample=0;sample<num_of_samples;sample++) {
 		if ((pid = fork())> 0) {
 			tick = getticks();
+			read(fd[0], (void *)&tick1, sizeof(uint64_t));
 			tick1 = getticks();
 		}
 		else {
